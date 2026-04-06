@@ -1,128 +1,178 @@
 /**
  * Файл: results_manager.gs
- * Визуализация Дашборда. 
- * Изменено: таблица начинается с A1, все раунды сгруппированы.
+ * Оптимизированная версия: берет данные из "Сводная таблица"
+ * Возвращен оригинальный дизайн и оформление.
+ * Исправлено: заголовки раундов сокращены до "Р1", "Р2" и т.д.
+ * Добавлено: стилизованные строки для 1, 2 и 3 мест.
+ * Обновлено: заголовок изменен на "ТАБЛИЦА ЛИДЕРОВ" с кубками.
  */
 
 function createResultsDashboard() {
+  const startTime = new Date().getTime();
+  const log = [];
+  
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const summarySheet = ss.getSheetByName("Сводная таблица");
   
-  if (!summarySheet) return;
+  if (!summarySheet) {
+    console.error("Лист 'Сводная таблица' не найден. Убедитесь, что название совпадает.");
+    return;
+  }
 
   const sheetName = "Результаты";
   let resultsSheet = ss.getSheetByName(sheetName);
-  if (!resultsSheet) {
+  
+  // ЭТАП 1: Подготовка листа
+  const t1 = new Date().getTime();
+  if (resultsSheet) {
+    resultsSheet.clear();
+    try {
+      const maxCols = resultsSheet.getMaxColumns();
+      for (let i = 0; i < 3; i++) resultsSheet.getRange(1, 1, 1, maxCols).shiftColumnGroupDepth(-1);
+    } catch (e) {}
+  } else {
     resultsSheet = ss.insertSheet(sheetName);
   }
+  log.push(`Этап 1 (Подготовка): ${new Date().getTime() - t1}ms`);
 
-  // 1. ПОЛНАЯ ОЧИСТКА И СБРОС ГРУПП
-  resultsSheet.setFrozenRows(0);
-  resultsSheet.setFrozenColumns(0);
+  // ЭТАП 2: Чтение данных
+  const t2 = new Date().getTime();
+  const summaryData = summarySheet.getDataRange().getValues();
   
-  const maxCols = resultsSheet.getMaxColumns();
-  if (maxCols > 0) {
-    try { 
-      // Разгруппировываем всё, что было (до 8 уровней)
-      for (let i = 0; i < 8; i++) {
-        resultsSheet.getRange(1, 1, 1, maxCols).shiftColumnGroupDepth(-1); 
-      }
-    } catch (e) {}
-  }
-  
-  resultsSheet.clear();
-  // Заливка всего листа темным фоном
-  resultsSheet.getRange(1, 1, resultsSheet.getMaxRows(), resultsSheet.getMaxColumns()).setBackground("#1a1a1a");
+  const rawHeaders = summaryData[0];
+  // Превращаем "Раунд 1" в "Р1", "Раунд 2" в "Р2" и т.д.
+  const roundHeaders = rawHeaders.slice(2, rawHeaders.length - 1).map(header => {
+    return header.toString().replace("Раунд ", "Р");
+  }); 
+  const lastCol = roundHeaders.length + 3;
 
-  // 2. ПОДГОТОВКА ДАННЫХ
-  const lastRowSummary = summarySheet.getLastRow();
-  const lastColSummary = summarySheet.getLastColumn();
-  if (lastRowSummary < 2) return;
+  let allResultsData = [];
+  for (let i = 1; i < summaryData.length; i++) {
+    const row = summaryData[i];
+    if (!row[1]) continue; 
 
-  const summaryData = summarySheet.getRange(1, 1, lastRowSummary, lastColSummary).getValues();
-  const roundHeaders = summaryData[0].slice(2, lastColSummary - 1);
-  const roundCount = roundHeaders.length;
-  const tableWidth = roundCount + 3; // Медаль + Команда + Раунды + Итого
-
-  const rawData = summaryData.slice(1).map(row => row.slice(1)); 
-  const activeTeamsData = rawData.filter(row => row[0].toString().trim() !== "" && row[0].toString().trim() !== "0");
-  const sortedData = activeTeamsData.sort((a, b) => b[b.length - 1] - a[a.length - 1]);
-  const teamCount = sortedData.length;
-
-  // 3. ФОРМИРОВАНИЕ МАССИВОВ ДЛЯ ПЕЧАТИ
-  const displayValues = [];
-  const backgroundColors = [];
-  
-  // Строка заголовка (Объединяем в первой строке)
-  resultsSheet.getRange(1, 1, 1, tableWidth).merge()
-    .setValue("🏆 ОБЩИЙ ЗАЧЕТ КВИЗА 🏆")
-    .setFontSize(28)
-    .setFontWeight("bold")
-    .setFontColor("#ffcc00")
-    .setHorizontalAlignment("center")
-    .setVerticalAlignment("middle");
-
-  // Шапка таблицы (2-я строка)
-  const headerRowValues = ["", "КОМАНДА", ...roundHeaders.map(h => h.replace("Раунд ", "Р")), "ИТОГО"];
-  displayValues.push(headerRowValues);
-  backgroundColors.push(new Array(tableWidth).fill("#1a1a1a"));
-
-  // Данные команд (с 3-й строки)
-  sortedData.forEach((row, i) => {
-    const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "";
-    const teamName = row[0];
-    const rounds = row.slice(1, 1 + roundCount);
-    const total = row[row.length - 1];
-    
-    displayValues.push([medal, teamName, ...rounds, total]);
-    backgroundColors.push(new Array(tableWidth).fill(i < 3 ? "#2d2d2d" : "#1a1a1a"));
-  });
-
-  // 4. ЗАПИСЬ И СТИЛИЗАЦИЯ (начиная со второй строки, так как первая занята заголовком)
-  const range = resultsSheet.getRange(2, 1, displayValues.length, tableWidth);
-  range.setValues(displayValues);
-  range.setBackgrounds(backgroundColors);
-  range.setFontFamily("Rubik").setFontColor("#ffffff").setVerticalAlignment("middle");
-
-  // Стили шапки (строка 2)
-  resultsSheet.getRange(2, 1, 1, tableWidth).setFontWeight("bold").setHorizontalAlignment("center");
-  resultsSheet.getRange(2, 2).setFontColor("#00e5ff").setHorizontalAlignment("left").setFontSize(14);
-  resultsSheet.getRange(2, tableWidth).setFontColor("#ffcc00").setFontSize(14);
-
-  // Стили тела
-  if (teamCount > 0) {
-    const dataRows = resultsSheet.getRange(3, 1, teamCount, tableWidth);
-    dataRows.setBorder(null, null, true, null, null, null, "#444444", SpreadsheetApp.BorderStyle.SOLID);
-    
-    resultsSheet.getRange(3, 1, teamCount, 1).setFontSize(26).setHorizontalAlignment("center");
-    resultsSheet.getRange(3, 2, teamCount, 1).setFontSize(16).setFontWeight("bold");
-    resultsSheet.getRange(3, 3, teamCount, roundCount).setFontSize(14).setHorizontalAlignment("center");
-    resultsSheet.getRange(3, tableWidth, teamCount, 1).setFontSize(22).setFontColor("#ffcc00").setFontWeight("bold").setHorizontalAlignment("center");
-
-    // Рамка вокруг столбца ИТОГО
-    resultsSheet.getRange(2, tableWidth, teamCount + 1, 1).setBorder(true, true, true, true, null, null, "#ffcc00", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
-  }
-
-  // 5. ГЕОМЕТРИЯ И ГРУППИРОВКА
-  resultsSheet.setHiddenGridlines(true);
-  
-  resultsSheet.setColumnWidth(1, 60);  // Медаль
-  resultsSheet.setColumnWidth(2, 350); // Команда
-  resultsSheet.setColumnWidth(tableWidth, 120); // Итого
-  
-  resultsSheet.setRowHeight(1, 90); // Высота заголовка
-  if (teamCount > 0) resultsSheet.setRowHeights(3, teamCount, 60); // Высота строк команд
-  
-  // Группировка раундов (столбцы между "Командой" и "Итого")
-  if (roundCount > 0) {
-    resultsSheet.setColumnWidths(3, roundCount, 75);
-    const groupRange = resultsSheet.getRange(1, 3, 1, roundCount);
-    
-    try {
-      groupRange.shiftColumnGroupDepth(1);
-      resultsSheet.collapseAllColumnGroups(); // Скрываем раунды по умолчанию
-    } catch (e) {
-      console.log("Группировка уже существует или ошибка: " + e.message);
+    let teamRow = ["", row[1]]; // [Медаль, Имя]
+    for (let j = 2; j < row.length - 1; j++) {
+      teamRow.push(row[j] || 0);
     }
+    teamRow.push(row[row.length - 1] || 0);
+    allResultsData.push(teamRow);
   }
+  const teamCount = allResultsData.length;
+  log.push(`Этап 2 (Чтение): ${new Date().getTime() - t2}ms`);
+
+  // ЭТАП 3: Запись и Сортировка
+  const t3 = new Date().getTime();
+  
+  // Темная тема для всего листа
+  resultsSheet.getRange("A:Z").setFontFamily("Rubik").setBackground("#1a1a1a").setFontColor("#ffffff");
+  resultsSheet.setHiddenGridlines(true);
+
+  // Запись данных
+  const dataRange = resultsSheet.getRange(3, 1, teamCount, lastCol);
+  dataRange.setValues(allResultsData);
+  dataRange.sort({column: lastCol, ascending: false});
+  log.push(`Этап 3 (Запись): ${new Date().getTime() - t3}ms`);
+
+  // ЭТАП 4: Стилизация (Возвращение дизайна + Медалисты)
+  const t4 = new Date().getTime();
+  
+  // 1. ЗАГОЛОВОК ДАШБОРДА
+  resultsSheet.getRange(1, 1, 1, lastCol).merge().setValue("🏆 ТАБЛИЦА ЛИДЕРОВ 🏆")
+       .setBackground("#1a1a1a")
+       .setFontColor("#ffcc00") 
+       .setFontWeight("bold")
+       .setHorizontalAlignment("center")
+       .setVerticalAlignment("middle")
+       .setFontSize(24);
+
+  // 2. ШАПКА ТАБЛИЦЫ
+  const headerRange = resultsSheet.getRange(2, 1, 1, lastCol);
+  headerRange.setBackground("#2d2d2d")
+             .setFontColor("#00e5ff")
+             .setFontWeight("bold")
+             .setHorizontalAlignment("center")
+             .setVerticalAlignment("middle")
+             .setFontSize(12);
+
+  resultsSheet.getRange(2, 1, 1, 2).merge().setValue("КОМАНДА");
+  resultsSheet.getRange(2, 3, 1, roundHeaders.length).setValues([roundHeaders]);
+  resultsSheet.getRange(2, lastCol).setValue("ИТОГО").setFontColor("#ffcc00");
+
+  // 3. РАССТАНОВКА МЕДАЛЕЙ И СТИЛЬНЫЕ СТРОКИ ТОП-3
+  for (let i = 0; i < teamCount; i++) {
+    const row = 3 + i;
+    const rowRange = resultsSheet.getRange(row, 1, 1, lastCol);
+    const teamNameCell = resultsSheet.getRange(row, 2);
+    
+    let medal = "";
+    let bgColor = "#1a1a1a";
+    let nameColor = "#ffffff";
+
+    if (i === 0) { // ЗОЛОТО
+      medal = "🥇";
+      bgColor = "#3d3211"; // Глубокий золотистый фон
+      nameColor = "#ffd700"; // Яркое золото для текста
+    } 
+    else if (i === 1) { // СЕРЕБРО
+      medal = "🥈";
+      bgColor = "#2f3136"; // Стальной серый
+      nameColor = "#e0e0e0"; // Светлое серебро
+    } 
+    else if (i === 2) { // БРОНЗА
+      medal = "🥉";
+      bgColor = "#32231a"; // Глубокий бронзовый/коричневый
+      nameColor = "#cd7f32"; // Бронзовый текст
+    }
+
+    // Установка медали
+    resultsSheet.getRange(row, 1).setValue(medal).setFontSize(20).setHorizontalAlignment("center");
+    
+    // Применение стилей строки
+    rowRange.setBackground(bgColor);
+    teamNameCell.setFontColor(nameColor).setFontWeight(i < 3 ? "bold" : "normal");
+    
+    // Горизонтальная линия между командами
+    rowRange.setBorder(null, null, true, null, null, null, "#444444", SpreadsheetApp.BorderStyle.SOLID);
+    
+    // Стиль ИТОГО (всегда золотой акцент)
+    resultsSheet.getRange(row, lastCol).setFontWeight("bold").setFontColor("#ffcc00").setFontSize(18);
+  }
+
+  // 4. ОБЩИЕ ПАРАМЕТРЫ ТЕКСТА
+  const allDataRange = resultsSheet.getRange(3, 1, teamCount, lastCol);
+  allDataRange.setVerticalAlignment("middle").setFontSize(16);
+  
+  resultsSheet.getRange(3, 3, teamCount, lastCol - 2).setHorizontalAlignment("center");
+  resultsSheet.getRange(3, 2, teamCount, 1).setHorizontalAlignment("left");
+
+  // Золотистая граница для колонки ИТОГО
+  const totalColumnRange = resultsSheet.getRange(2, lastCol, teamCount + 1, 1);
+  totalColumnRange.setBorder(true, true, true, true, null, null, "#ffcc00", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+
+  // 5. НАСТРОЙКА РАЗМЕРОВ
+  resultsSheet.setColumnWidth(1, 50);
+  resultsSheet.setColumnWidth(2, 300);
+  resultsSheet.setColumnWidth(lastCol, 100);
+  resultsSheet.setRowHeight(1, 80);
+  resultsSheet.setRowHeights(3, teamCount, 55);
+  
+  if (roundHeaders.length > 0) {
+    resultsSheet.setColumnWidths(3, roundHeaders.length, 60);
+  }
+
+  // ГРУППИРОВКА
+  if (roundHeaders.length > 1) {
+    try {
+      resultsSheet.getRange(1, 3, 1, roundHeaders.length).shiftColumnGroupDepth(1);
+      resultsSheet.collapseAllColumnGroups();
+    } catch(e) {}
+  }
+  
+  log.push(`Этап 4 (Дизайн): ${new Date().getTime() - t4}ms`);
+  log.push(`-----------------------------------`);
+  log.push(`ОБЩЕЕ ВРЕМЯ: ${new Date().getTime() - startTime}ms`);
+  
+  console.log("--- ОТЧЕТ С ПРЕМИУМ ДИЗАЙНОМ ---");
+  log.forEach(entry => console.log(entry));
 }
