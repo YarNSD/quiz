@@ -1,6 +1,7 @@
 /**
  * Файл: auto_sync.gs
- * Ответственный за отслеживание изменений в составе листов и обновление Сводной таблицы.
+ * Ответственный за отслеживание изменений в составе листов и обновление Техлиста.
+ * Автоматическое обновление Сводной таблицы и Дашборда отключено по запросу.
  */
 
 function setupAutoUpdate() {
@@ -13,13 +14,13 @@ function setupAutoUpdate() {
     if (func === 'autoUpdateDashboard' || func === 'onEdit') ScriptApp.deleteTrigger(t); 
   });
   
-  // Создаем триггер на изменение структуры таблиц
+  // Создаем триггер на изменение структуры таблиц (добавление/удаление листов)
   ScriptApp.newTrigger('autoUpdateDashboard')
     .forSpreadsheet(ss)
     .onChange()
     .create();
     
-  SpreadsheetApp.getUi().alert("✅ Автообновление включено.");
+  SpreadsheetApp.getUi().alert("✅ Автообновление Техлиста включено. Сводная таблица теперь обновляется только вручную.");
 }
 
 /**
@@ -30,18 +31,17 @@ function onEdit(e) {
   const range = e.range;
   const sheetName = range.getSheet().getName();
   
-  // 1. Если правим данные в раундах — пересчитываем результаты
-  if (sheetName.startsWith("Раунд ")) {
-    if (typeof createResultsDashboard === 'function') {
-      createResultsDashboard();
-    }
+  // Автоматическое обновление Дашборда и Сводной при правке ячеек ОТКЛЮЧЕНО.
+  // Оставлено только условие для отладки или ручного вызова при необходимости.
+  
+  /* if (sheetName.startsWith("Раунд ")) {
+    // createResultsDashboard(); // Отключено
   }
   
-  // 2. Если правим "Список команд" (столбец B, начиная со 2 строки)
-  // Это решит проблему, когда команды удалены, но сводная таблица не обновилась.
   if (sheetName === "Список команд" && range.getColumn() === 2 && range.getRow() >= 2) {
-    refreshAllData();
+    // refreshAllData(); // Отключено
   }
+  */
 }
 
 /**
@@ -51,10 +51,9 @@ function autoUpdateDashboard(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let techSheet = ss.getSheetByName("Техлист");
   
-  // Если техлиста нет, создаем его и запускаем обновление
+  // Если техлиста нет, создаем его
   if (!techSheet) {
     updateTechSheetList();
-    refreshAllData();
     return;
   }
   
@@ -72,13 +71,17 @@ function autoUpdateDashboard(e) {
                     currentSheets.some((name, i) => name !== oldSheets[i]);
   
   if (isChanged) {
+    // ОБНОВЛЕНИЕ ТЕХЛИСТА ОСТАВЛЕНО
     updateTechSheetList();
-    refreshAllData();
+    
+    // ОБНОВЛЕНИЕ ДАННЫХ ОТКЛЮЧЕНО
+    // refreshAllData(); 
+    console.log("Структура изменилась: Техлист обновлен. Сводная таблица не затронута.");
   }
 }
 
 /**
- * Вспомогательная функция для полного обновления данных
+ * Вспомогательная функция для ПОЛНОГО обновления данных (теперь только для ручного запуска)
  */
 function refreshAllData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -96,6 +99,7 @@ function refreshAllData() {
 
 /**
  * Обновление списка листов в Техлисте (Диапазон A2:A)
+ * ЭТА ФУНКЦИЯ РАБОТАЕТ АВТОМАТИЧЕСКИ
  */
 function updateTechSheetList() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -118,7 +122,7 @@ function updateTechSheetList() {
 }
 
 /**
- * Умное обновление "Сводной таблицы"
+ * Умное обновление "Сводной таблицы" (Вызывается только через refreshAllData)
  */
 function updateSummaryMatrix(teams, roundSheets) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -135,7 +139,6 @@ function updateSummaryMatrix(teams, roundSheets) {
     return;
   }
 
-  // Сортировка раундов по номеру
   const sortedRoundSheets = roundSheets.slice().sort((a, b) => {
     const numA = parseInt(a.getName().replace(/\D/g, '')) || 0;
     const numB = parseInt(b.getName().replace(/\D/g, '')) || 0;
@@ -149,7 +152,7 @@ function updateSummaryMatrix(teams, roundSheets) {
   let newData = [headerRow];
   teams.forEach((team, tIdx) => {
     let row = [tIdx + 1, team[0]];
-    const teamColLetter = columnToLetter(5 + tIdx); // Данные в раундах начинаются с E (5)
+    const teamColLetter = columnToLetter(5 + tIdx);
     
     sortedRoundSheets.forEach(s => {
       row.push(`=IFERROR(INDIRECT("'${s.getName()}'!${teamColLetter}" & MATCH("ИТОГО:"; '${s.getName()}'!$A:$A; 0)); 0)`);
@@ -164,11 +167,8 @@ function updateSummaryMatrix(teams, roundSheets) {
   const rows = newData.length;
   const cols = headerRow.length;
   
-  // Очистка старой области перед вставкой новых данных
   summarySheet.clear(); 
   summarySheet.getRange(1, 1, rows, cols).setValues(newData);
-  
-  // Применяем стили
   applySummaryStyles(summarySheet, rows, cols, sortedRoundSheets.length);
 }
 
