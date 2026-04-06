@@ -30,105 +30,78 @@ function createQuizRound() {
   
   const sheet = ss.insertSheet(sheetName);
   const maxTeams = 20; 
-  const teams = teamListSheet.getRange("B2:B21").getValues();
   
-  sheet.getRange("A:Z").setFontFamily("Rubik");
-  sheet.setHiddenGridlines(true);
+  // УСТАНОВКА ССЫЛОК НА КОМАНДЫ (Функционал №1)
+  // Записываем формулы ссылок на лист 'Список команд' (B2:B21)
+  const teamLinks = [];
+  for (let i = 2; i <= 21; i++) {
+    teamLinks.push([`='Список команд'!B${i}`]);
+  }
+  // Транспонируем и вставляем в первую строку начиная с 5-го столбца (E1)
+  sheet.getRange(1, 5, 1, maxTeams).setFormulas([teamLinks.map(r => r[0])]);
   
-  // --- 1. ОФОРМЛЕНИЕ ТАБЛИЦЫ ВОПРОСОВ ---
-  const headers = [["№", "Баллы", "Отв.", "Верный ответ"]];
-  sheet.getRange(1, 1, 1, 4).setValues(headers)
-       .setBackground("#444444").setFontColor("#ffffff").setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle");
-  sheet.getRange("B1").setTextRotation(90);
+  sheet.getRange("A:Z").setFontFamily("Ubuntu").setVerticalAlignment("middle");
 
-  let questionData = [];
-  for (let i = 1; i <= questCount; i++) {
-    questionData.push([i, pointsPerQuest, "", ""]);
-  }
-  sheet.getRange(2, 1, questCount, 4).setValues(questionData).setHorizontalAlignment("center").setVerticalAlignment("middle");
-
-  // Зебра для строк
-  for (let i = 0; i < questCount; i++) {
-    const rowColor = (i % 2 === 0) ? "#ffffff" : "#f9f9f9";
-    sheet.getRange(2 + i, 1, 1, 4 + maxTeams).setBackground(rowColor);
-  }
-
-  // --- 2. КОМАНДЫ (СТОЛБЦЫ E-X) ---
+  // Заголовки вопросов
+  const headerData = [["№", "Вопрос", "Баллы", "Верно"]];
+  sheet.getRange(1, 1, 1, 4).setValues(headerData).setBackground("#444444").setFontColor("#ffffff").setFontWeight("bold").setHorizontalAlignment("center");
+  
+  // Стили для названий команд в шапке
   const teamHeaderRange = sheet.getRange(1, 5, 1, maxTeams);
-  teamHeaderRange.setBackground("#e8f0fe").setFontColor("#1a73e8").setFontWeight("bold")
-                 .setHorizontalAlignment("center").setVerticalAlignment("middle").setWrap(true);
-  
-  for (let i = 0; i < maxTeams; i++) {
-    const teamCell = teamHeaderRange.getCell(1, i + 1);
-    teamCell.setFormula("='Список команд'!B" + (i + 2));
-    if (!teams[i] || teams[i][0] === "") {
-      sheet.hideColumns(5 + i);
-    }
+  teamHeaderRange.setBackground("#fbbc04").setFontColor("#000000").setFontWeight("bold").setHorizontalAlignment("center").setFontSize(11);
+
+  // Создание строк вопросов
+  const questData = [];
+  for (let i = 1; i <= questCount; i++) {
+    questData.push([i, "Вопрос " + i, pointsPerQuest, 0]);
   }
-  
-  sheet.getRange(2, 5, questCount, maxTeams).insertCheckboxes();
-  sheet.getRange(2, 3, questCount, 1).setBackground("#fff2cc").setFontWeight("bold");
-  sheet.getRange(2, 4, questCount, 1).setBackground("#d9ead3").setFontWeight("bold").setHorizontalAlignment("left");
-  
-  // --- 3. ИТОГИ ---
-  const bonusRow = questCount + 2;
-  const totalRow = questCount + 3;
+  sheet.getRange(2, 1, questCount, 4).setValues(questData).setHorizontalAlignment("center");
+  sheet.getRange(2, 2, questCount, 1).setHorizontalAlignment("left");
 
-  sheet.getRange(bonusRow, 1, 1, 4).merge().setValue("Доп. баллы:").setFontWeight("bold").setHorizontalAlignment("right").setBackground("#fff2cc");
-  sheet.getRange(totalRow, 1, 1, 4).merge().setValue("ИТОГО:").setFontWeight("bold").setHorizontalAlignment("right").setBackground("#f1f3f4");
+  // Сетка чекбоксов
+  const checkboxRange = sheet.getRange(2, 5, questCount, maxTeams);
+  checkboxRange.insertCheckboxes().setHorizontalAlignment("center");
 
+  // Формулы подсчета (Верно в строке)
+  for (let i = 0; i < questCount; i++) {
+    const row = i + 2;
+    const range = `${columnToLetter(5)}${row}:${columnToLetter(5 + maxTeams - 1)}${row}`;
+    sheet.getRange(row, 4).setFormula(`=COUNTIF(${range}; TRUE)`);
+  }
+
+  // Строка ИТОГО
+  const totalRow = questCount + 2;
+  sheet.getRange(totalRow, 1, 1, 4).setBackground("#eeeeee").setFontWeight("bold");
+  sheet.getRange(totalRow, 2).setValue("ИТОГО БАЛЛОВ:");
+  
+  // Формулы суммы по столбцам команд
   for (let j = 0; j < maxTeams; j++) {
-    const colLetter = columnToLetter(5 + j);
-    sheet.getRange(bonusRow, 5 + j).setBackground("#fffef3").setHorizontalAlignment("center");
-    const formula = `=SUMPRODUCT($B$2:$B$${questCount + 1}; ${colLetter}2:${colLetter}${questCount + 1}) + N(${colLetter}${bonusRow})`;
-    sheet.getRange(totalRow, 5 + j).setFormula(formula)
-         .setFontWeight("bold").setBackground("#34a853").setFontColor("#ffffff").setHorizontalAlignment("center").setFontSize(12);
+    const colIdx = 5 + j;
+    const colLetter = columnToLetter(colIdx);
+    const sumFormula = `=SUMPRODUCT(${colLetter}2:${colLetter}${questCount + 1}; $C$2:$C${questCount + 1})`;
+    sheet.getRange(totalRow, colIdx).setFormula(sumFormula).setFontWeight("bold").setHorizontalAlignment("center").setBackground("#fff2cc");
   }
 
-  // --- 4. ТЕКУЩИЙ РЕЙТИНГ (НИЖЕ ИТОГО НА 1 СТРОКУ) ---
-  const dashStartRow = totalRow + 2; 
-  
-  // Заголовок рейтинга (объединяем C и D для красоты заголовка или оставляем как есть)
-  sheet.getRange(dashStartRow, 3, 1, 2).merge()
-       .setValue("🏆 РЕЙТИНГ РАУНДА")
-       .setBackground("#444444").setFontColor("#ffffff").setFontWeight("bold").setHorizontalAlignment("center");
+  // Область результатов (Дашборд внутри листа)
+  const dashStartRow = totalRow + 2;
+  sheet.getRange(dashStartRow, 3, 1, 2).setValues([["Очки", "Команда"]]).setBackground("#34a853").setFontColor("#ffffff").setFontWeight("bold").setHorizontalAlignment("center");
 
-  // Подписи колонок (C - Очки, D - Команда)
-  sheet.getRange(dashStartRow + 1, 3).setValue("Баллы").setFontWeight("bold").setHorizontalAlignment("center").setBackground("#f1f3f4");
-  sheet.getRange(dashStartRow + 1, 4).setValue("Команда").setFontWeight("bold").setHorizontalAlignment("center").setBackground("#f1f3f4");
-
-  // Формула SORT
   const teamsRange = `${columnToLetter(5)}1:${columnToLetter(5 + maxTeams - 1)}1`;
   const totalsRange = `${columnToLetter(5)}${totalRow}:${columnToLetter(5 + maxTeams - 1)}${totalRow}`;
   
-  // В формуле меняем порядок: {Очки \ Команды}, чтобы Очки были первыми (столбец C), Команды вторыми (столбец D)
-  const sortFormula = `=SORT(FILTER({TRANSPOSE(${totalsRange})\\ TRANSPOSE(${teamsRange})}; TRANSPOSE(${teamsRange})<>\"\"); 1; FALSE)`;
+  const sortFormula = `=SORT(FILTER({TRANSPOSE(${totalsRange})\\ TRANSPOSE(${teamsRange})}; TRANSPOSE(${teamsRange})<>""); 1; FALSE)`;
+  sheet.getRange(dashStartRow + 1, 3).setFormula(sortFormula);
   
-  sheet.getRange(dashStartRow + 2, 3).setFormula(sortFormula);
-  
-  // Стилизация области вывода
-  const resultsRange = sheet.getRange(dashStartRow + 2, 3, maxTeams, 2);
-  resultsRange.setFontSize(12).setVerticalAlignment("middle");
-  sheet.getRange(dashStartRow + 2, 3, maxTeams, 1).setHorizontalAlignment("center").setFontWeight("bold").setFontColor("#34a853");
-  sheet.getRange(dashStartRow + 2, 4, maxTeams, 1).setHorizontalAlignment("left");
+  // Форматирование
+  sheet.setColumnWidth(1, 30);
+  sheet.setColumnWidth(2, 200);
+  sheet.setColumnWidth(3, 80);
+  sheet.setColumnWidth(4, 60);
+  sheet.setColumnWidths(5, maxTeams, 100);
 
-  // Настройки размеров
-  sheet.setColumnWidth(1, 25); 
-  sheet.setColumnWidth(2, 25); 
-  sheet.setColumnWidth(3, 60); // Чуть шире для баллов
-  sheet.setColumnWidth(4, 240); 
-  sheet.setColumnWidths(5, maxTeams, 110);
-  
-  sheet.setRowHeight(1, 60);
-  sheet.setFrozenRows(1);
-  sheet.setFrozenColumns(4);
-
-  SpreadsheetApp.getUi().alert("Раунд создан! Рейтинг: Баллы (C), Команда (D).");
+  SpreadsheetApp.getUi().alert("✅ Раунд создан! Названия команд теперь связаны со списком.");
 }
 
-/**
- * Вспомогательная функция для конвертации индекса колонки в букву
- */
 function columnToLetter(column) {
   let temp, letter = "";
   while (column > 0) {
