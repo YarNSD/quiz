@@ -1,6 +1,21 @@
 /**
- * Функция обработки GET-запроса (развертывание как веб-приложение)
+ * Файл: web_server.gs
+ *
+ * ИСПРАВЛЕНИЯ:
+ * - getLiveResults: при фильтрации teamRows не проверялось, что row[1] не пустой.
+ *   Команды без имени попадали в результаты. Добавлен фильтр.
+ * - getLiveResults: rank добавляется в объект, но в results_web.html он нигде
+ *   не используется (медали рисуются по индексу). Поле оставлено, добавлен комментарий.
+ * - getDetailedRoundData: sheet.getRange("A:A") читает ~1000 строк для поиска ИТОГО.
+ *   Заменено на getRange(1, 1, lastRow, 1) — только реальные данные.
+ * - getDetailedRoundData: questionsEndRow вычислялся как i (0-based), потом numRows = i - 1.
+ *   При questionsEndRow == 1 (ИТОГО во 2-й строке) numRows = 0 — корректно возвращается [].
+ *   Логика верна, но добавлен поясняющий комментарий.
+ * - getDetailedRoundData: поиск команды сравнивал teamHeaders[j] === teamName (строгое равенство).
+ *   Если имя команды из формулы содержит пробелы или отличается регистром — не найдёт.
+ *   Добавлено trim() для надёжности.
  */
+
 function doGet(e) {
   return HtmlService.createHtmlOutputFromFile('results_web')
     .setTitle('Quiz Leaderboard')
@@ -9,8 +24,8 @@ function doGet(e) {
 }
 
 /**
- * Функция, которую вызывает Frontend для получения данных.
- * Теперь берет данные напрямую из "Сводной таблицы", игнорируя визуальный лист "Результаты".
+ * Возвращает текущие результаты для веб-лидерборда.
+ * Данные берутся напрямую из "Сводной таблицы".
  */
 function getLiveResults() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -21,54 +36,47 @@ function getLiveResults() {
   const lastCol = summarySheet.getLastColumn();
   if (lastRow < 2) return [];
 
-  // Получаем все данные из сводной таблицы
   const data = summarySheet.getRange(1, 1, lastRow, lastCol).getValues();
-  
-  // Заголовки (1 строка): [ "№", "Команда", "Раунд 1", ..., "ИТОГО" ]
-  const headers = data[0];
-  const roundHeaders = headers.slice(2, lastCol - 1); // Только названия раундов
 
-  // Данные команд (начиная со 2 строки)
+  const headers = data[0];
+  const roundHeaders = headers.slice(2, headers.length - 1); // Названия раундов без "ИТОГО"
+
   const teamRows = data.slice(1);
-  
-  // Формируем массив объектов для фронтенда
-  const results = teamRows.map(row => {
-    const roundsData = [];
-    // Собираем баллы за каждый раунд
-    roundHeaders.forEach((header, index) => {
-      roundsData.push({
-        name: header.replace("Раунд ", "Р"),
-        fullName: header, // Для точного поиска листа
+
+  const results = teamRows
+    // ИСПРАВЛЕНИЕ: пропускаем строки без имени команды
+    .filter(row => row[1] && row[1].toString().trim() !== "")
+    .map(row => {
+      const roundsData = roundHeaders.map((header, index) => ({
+        name: header.toString().replace("Раунд ", "Р"),
+        fullName: header.toString(),
         score: row[index + 2] || 0
-      });
+      }));
+
+      return {
+        name: row[1],
+        score: row[headers.length - 1] || 0,  // Последний столбец = ИТОГО
+        rounds: roundsData
+      };
     });
 
-    return {
-      name: row[1],             // Имя команды
-      score: row[lastCol - 1],  // Итоговый балл
-      rounds: roundsData        // Детализация по раундам
-    };
-  });
-
-  // Сортируем по убыванию баллов
+  // Сортировка по убыванию баллов
   results.sort((a, b) => b.score - a.score);
 
-  // Добавляем места (ранги) после сортировки
+  // rank добавляется для возможного использования на фронте
   return results.map((item, index) => {
     let rankLabel = (index + 1).toString();
     if (index === 0) rankLabel = "🥇";
     else if (index === 1) rankLabel = "🥈";
     else if (index === 2) rankLabel = "🥉";
-    
-    return {
-      ...item,
-      rank: rankLabel
-    };
+
+    return { ...item, rank: rankLabel };
   });
 }
 
 /**
- * Получение детальных ответов для конкретной команды в конкретном раунде
+ * Возвращает детализацию ответов команды в конкретном раунде.
+ * Вызывается с фронтенда при клике на бейдж раунда.
  */
 function getDetailedRoundData(teamName, roundFullName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -76,21 +84,26 @@ function getDetailedRoundData(teamName, roundFullName) {
   if (!sheet) return null;
 
   const lastRow = sheet.getLastRow();
-  // Ищем строку "ИТОГО:" чтобы понять, где заканчиваются вопросы
-  const colA = sheet.getRange("A:A").getValues();
+
+  // ИСПРАВЛЕНИЕ: читаем только реальные строки, а не весь столбец A (~1000 строк)
+  const colAValues = sheet.getRange(1, 1, lastRow, 1).getValues();
+
+  // questionsEndRow — 0-based индекс строки ИТОГО
+  // Данные вопросов: строки 2..(questionsEndRow) включительно, т.е. (questionsEndRow - 1) строк
   let questionsEndRow = lastRow;
-  for (let i = 0; i < colA.length; i++) {
-    if (colA[i][0].toString().includes("ИТОГО:")) {
-      questionsEndRow = i; // Индекс 0-based соответствует номеру строки (i+1), но нам нужны данные ДО этой строки
+  for (let i = 0; i < colAValues.length; i++) {
+    if (colAValues[i][0].toString().includes("ИТОГО:")) {
+      questionsEndRow = i; // 0-based: строка ИТОГО — это i+1, вопросы до неё
       break;
     }
   }
 
-  // Названия команд в 1-й строке (с 5-го столбца)
+  // Поиск колонки команды в заголовках (строка 1, столбцы E-X)
   const teamHeaders = sheet.getRange(1, 5, 1, 20).getValues()[0];
   let teamColIndex = -1;
   for (let j = 0; j < teamHeaders.length; j++) {
-    if (teamHeaders[j] === teamName) {
+    // ИСПРАВЛЕНИЕ: trim() на случай пробелов в формуле или имени
+    if (teamHeaders[j].toString().trim() === teamName.toString().trim()) {
       teamColIndex = 5 + j;
       break;
     }
@@ -98,12 +111,12 @@ function getDetailedRoundData(teamName, roundFullName) {
 
   if (teamColIndex === -1) return null;
 
-  // Получаем номера вопросов (A), баллы (B) и чекбоксы (teamColIndex)
-  const numRows = questionsEndRow - 1; // Минус шапка
+  // numRows = кол-во строк вопросов (заголовок в строке 1, данные с строки 2)
+  const numRows = questionsEndRow - 1;
   if (numRows <= 0) return [];
 
-  const questions = sheet.getRange(2, 1, numRows, 2).getValues();
-  const checks = sheet.getRange(2, teamColIndex, numRows, 1).getValues();
+  const questions = sheet.getRange(2, 1, numRows, 2).getValues();  // [номер, баллы]
+  const checks = sheet.getRange(2, teamColIndex, numRows, 1).getValues(); // [чекбокс]
 
   return questions.map((q, idx) => ({
     num: q[0],
