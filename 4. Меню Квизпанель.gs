@@ -12,10 +12,8 @@ function onOpen() {
 
     // Секция Дашборда
     .addSubMenu(ui.createMenu('📈 Лист РЕЗУЛЬТАТЫ')
-      .addItem('🔄 ОБНОВИТЬ СЕЙЧАС (Вручную)', 'createResultsDashboard')
-      .addSeparator()
-      .addItem('⚙️ Настроить триггеры данных', 'setupAutoUpdate')
-      .addItem('❌ Отключить все триггеры', 'disableAllAutomation'))
+      .addItem('🔄 ОБНОВИТЬ СЕЙЧАС (Вручную)', 'createResultsDashboard'))
+
 
     .addSeparator()
     .addItem('📝 Обновить Техлист (Список листов)', 'updateTechSheetList')
