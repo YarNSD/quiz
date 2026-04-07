@@ -1,7 +1,6 @@
 /**
  * Файл: auto_sync.gs
- * Ответственный за отслеживание изменений в составе листов и обновление Техлиста.
- * Автоматическое обновление Сводной таблицы и Дашборда отключено по запросу.
+ * Ответственный за отслеживание изменений в составе листов, обновление Техлиста и Сводной таблицы.
  */
 
 function setupAutoUpdate() {
@@ -19,67 +18,49 @@ function setupAutoUpdate() {
     .forSpreadsheet(ss)
     .onChange()
     .create();
+
+  // Создаем триггер на редактирование (для списка команд)
+  ScriptApp.newTrigger('onEdit')
+    .forSpreadsheet(ss)
+    .onEdit()
+    .create();
     
-  SpreadsheetApp.getUi().alert("✅ Автообновление Техлиста включено. Сводная таблица теперь обновляется только вручную.");
+  // Сразу обновляем технические данные при настройке
+  refreshAllData();
+    
+  SpreadsheetApp.getUi().alert("✅ Автообновление включено. Техлист и Сводная таблица обновляются автоматически. Дашборд обновляется ТОЛЬКО вручную.");
 }
 
+/**
+ * Автоматическое обновление при редактировании ячеек (например, в списке команд).
+ */
+function onEdit(e) {
+  if (!e) return;
+  const sheetName = e.range.getSheet().getName();
+  
+  // Если изменили список команд, обновляем сводную таблицу автоматически
+  if (sheetName === "Список команд") {
+    refreshAllData();
+  }
+}
 
 /**
  * Обработчик изменений структуры (добавление/удаление/переименование листов)
  */
 function autoUpdateDashboard(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let techSheet = ss.getSheetByName("Техлист");
   
-  // Если техлиста нет, создаем его
-  if (!techSheet) {
-    updateTechSheetList();
-    return;
-  }
+  // 1. Обновляем технический список листов
+  updateTechSheetList();
   
-  const currentSheets = ss.getSheets().map(s => s.getName());
-  const lastRow = techSheet.getLastRow();
-  let oldSheets = [];
+  // 2. Обновляем только Сводную таблицу
+  refreshAllData();
   
-  // ЧИТАЕМ ИЗ A2:A (столбец 1)
-  if (lastRow >= 2) {
-    oldSheets = techSheet.getRange(2, 1, lastRow - 1, 1).getValues().map(r => r[0]).filter(String);
-  }
-  
-  // Сравниваем списки листов
-  const isChanged = currentSheets.length !== oldSheets.length || 
-                    currentSheets.some((name, i) => name !== oldSheets[i]);
-  
-  if (isChanged) {
-    // ОБНОВЛЕНИЕ ТЕХЛИСТА ОСТАВЛЕНО
-    updateTechSheetList();
-    
-    // ОБНОВЛЕНИЕ ДАННЫХ ОТКЛЮЧЕНО
-    // refreshAllData(); 
-    console.log("Структура изменилась: Техлист обновлен. Сводная таблица не затронута.");
-  }
-}
-
-/**
- * Вспомогательная функция для ПОЛНОГО обновления данных (теперь только для ручного запуска)
- */
-function refreshAllData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const teamListSheet = ss.getSheetByName("Список команд");
-  const roundSheets = ss.getSheets().filter(s => s.getName().startsWith("Раунд "));
-  
-  if (teamListSheet && roundSheets.length > 0) {
-    const teams = teamListSheet.getRange("B2:B").getValues().filter(r => r[0] !== "");
-    updateSummaryMatrix(teams, roundSheets);
-    if (typeof createResultsDashboard === 'function') {
-      createResultsDashboard();
-    }
-  }
+  console.log("Структура изменилась: Техлист и Сводная таблица обновлены.");
 }
 
 /**
  * Обновление списка листов в Техлисте (Диапазон A2:A)
- * ЭТА ФУНКЦИЯ РАБОТАЕТ АВТОМАТИЧЕСКИ
  */
 function updateTechSheetList() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -91,9 +72,7 @@ function updateTechSheetList() {
   }
   
   const sheetNames = ss.getSheets().map(s => [s.getName()]);
-  
-  // Полная очистка столбца A перед записью
-  techSheet.getRange("A:A").clearContent();
+  techSheet.clearContents();
   techSheet.getRange(1, 1).setValue("Список листов (служебный)").setFontWeight("bold");
   
   if (sheetNames.length > 0) {
@@ -102,7 +81,27 @@ function updateTechSheetList() {
 }
 
 /**
- * Умное обновление "Сводной таблицы" (Вызывается только через refreshAllData)
+ * Функция для пересчета Сводной таблицы
+ */
+function refreshAllData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const teamListSheet = ss.getSheetByName("Список команд");
+  const roundSheets = ss.getSheets().filter(s => s.getName().startsWith("Раунд "));
+  
+  if (teamListSheet && roundSheets.length > 0) {
+    // Берем команды из столбца B
+    const teams = teamListSheet.getRange("B2:B").getValues().filter(r => r[0] !== "");
+    
+    // Обновляем матрицу формул в Сводной таблице
+    updateSummaryMatrix(teams, roundSheets);
+    
+    // ВАЖНО: Вызов createResultsDashboard() УДАЛЕН отсюда, 
+    // чтобы дашборд не обновлялся автоматически.
+  }
+}
+
+/**
+ * Умное обновление "Сводной таблицы"
  */
 function updateSummaryMatrix(teams, roundSheets) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -119,6 +118,7 @@ function updateSummaryMatrix(teams, roundSheets) {
     return;
   }
 
+  // Сортируем раунды по номеру в названии
   const sortedRoundSheets = roundSheets.slice().sort((a, b) => {
     const numA = parseInt(a.getName().replace(/\D/g, '')) || 0;
     const numB = parseInt(b.getName().replace(/\D/g, '')) || 0;
@@ -132,9 +132,10 @@ function updateSummaryMatrix(teams, roundSheets) {
   let newData = [headerRow];
   teams.forEach((team, tIdx) => {
     let row = [tIdx + 1, team[0]];
-    const teamColLetter = columnToLetter(5 + tIdx);
+    const teamColLetter = columnToLetter(5 + tIdx); // Данные команд в раундах начинаются с E (5-й столбец)
     
     sortedRoundSheets.forEach(s => {
+      // Динамическая формула для подтягивания ИТОГО из листа каждого раунда
       row.push(`=IFERROR(INDIRECT("'${s.getName()}'!${teamColLetter}" & MATCH("ИТОГО:"; '${s.getName()}'!$A:$A; 0)); 0)`);
     });
     
