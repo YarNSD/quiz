@@ -7,10 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --ios-bg: #0b0b0f;
-      --card-bg: rgba(255, 255, 255, 0.05);
-    }
+    :root { --ios-bg: #0b0b0f; --card-bg: rgba(255,255,255,0.05); }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -26,100 +23,177 @@
       background: var(--card-bg);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255,255,255,0.08);
       box-shadow: 0 4px 15px rgba(0,0,0,0.3);
       margin-bottom: 8px;
       border-radius: 16px;
       transition: transform 0.2s;
     }
+    .rank-1 { border-color: rgba(255,215,0,0.4); background: linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(255,215,0,0.02) 100%); }
+    .rank-2 { border-color: rgba(192,192,192,0.4); background: linear-gradient(135deg, rgba(192,192,192,0.15) 0%, rgba(192,192,192,0.02) 100%); }
+    .rank-3 { border-color: rgba(205,127,50,0.4); background: linear-gradient(135deg, rgba(205,127,50,0.15) 0%, rgba(205,127,50,0.02) 100%); }
 
-    /* Стили для топ-3 */
-    .rank-1 { 
-      border-color: rgba(255, 215, 0, 0.4); 
-      background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.02) 100%);
-    }
-    .rank-2 { 
-      border-color: rgba(192, 192, 192, 0.4); 
-      background: linear-gradient(135deg, rgba(192, 192, 192, 0.15) 0%, rgba(192, 192, 192, 0.02) 100%);
-    }
-    .rank-3 { 
-      border-color: rgba(205, 127, 50, 0.4); 
-      background: linear-gradient(135deg, rgba(205, 127, 50, 0.15) 0%, rgba(205, 127, 50, 0.02) 100%);
-    }
-
-    .rounds-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); 
-      gap: 6px;
-    }
-
+    .rounds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 6px; }
     .round-badge {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
       padding: 6px 4px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
       border-radius: 10px;
     }
+    .medal-icon { font-size: 24px; line-height: 1; filter: drop-shadow(0 0 8px rgba(255,255,255,0.2)); }
 
-    .medal-icon {
-      font-size: 24px;
-      line-height: 1;
-      filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));
-    }
-
-    #modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.9);
+    /* Все оверлеи */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
       backdrop-filter: blur(20px);
       z-index: 100;
       display: none;
       padding: 16px;
-      align-items: center;
-      justify-content: center;
+      align-items: center; justify-content: center;
     }
+    .overlay.active { display: flex; }
 
-    .modal-open #modal-overlay { display: flex; }
-    
     .answer-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      display: flex; justify-content: space-between; align-items: center;
       padding: 10px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
     }
 
-    .loading-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    .loading-pulse { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+
+    /* Точка LIVE */
+    .live-dot {
+      display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+      background: #3b82f6; margin-right: 5px;
+      vertical-align: middle; position: relative; top: -1px;
+      animation: livePulse 1.4s ease-in-out infinite;
+    }
+    .live-dot.paused { background: #3a3a3a; animation: none; }
+    @keyframes livePulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.25; transform:scale(.55); } }
+
+    /* Кнопка ⚙️ администратора */
+    #admin-btn {
+      position: fixed; bottom: 20px; right: 16px;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: background 0.2s, transform 0.15s;
+      z-index: 50;
+    }
+    #admin-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.12); }
+
+    /* Поле ввода пароля */
+    .admin-input {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      color: #fff; font-family: inherit; font-size: 15px; font-weight: 600;
+      padding: 12px 16px; width: 100%; outline: none;
+      transition: border-color 0.2s;
+    }
+    .admin-input:focus { border-color: rgba(59,130,246,0.6); }
+    .admin-input.error { border-color: rgba(239,68,68,0.7); animation: shake 0.3s; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    /* Тоггл */
+    .toggle-track {
+      width: 44px; height: 26px; border-radius: 13px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
+      position: relative; cursor: pointer;
+      transition: background 0.25s;
+      flex-shrink: 0;
+    }
+    .toggle-track.on { background: #3b82f6; border-color: #3b82f6; }
+    .toggle-thumb {
+      position: absolute; top: 3px; left: 3px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; transition: transform 0.25s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+    .toggle-track.on .toggle-thumb { transform: translateX(18px); }
+
+    /* Кнопки в панели */
+    .panel-btn {
+      border-radius: 12px; padding: 11px 18px;
+      font-size: 12px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+      border: none; font-family: inherit;
+    }
+    .panel-btn:active { transform: scale(0.96); opacity: 0.8; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-danger  { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+    .btn-success { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+
+    /* Интервал-инпут */
+    .interval-input {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      color: #fff; font-family: inherit; font-size: 14px; font-weight: 700;
+      padding: 8px 12px; width: 72px; outline: none; text-align: center;
+      transition: border-color 0.2s;
+    }
+    .interval-input:focus { border-color: rgba(59,130,246,0.6); }
+
+    /* Тост-уведомление */
+    #toast {
+      position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(30,30,40,0.95); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px; padding: 8px 18px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+      color: #ccc; white-space: nowrap;
+      opacity: 0; transition: opacity 0.25s, transform 0.25s;
+      z-index: 200; pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body class="p-3 pb-8">
-  
+
+  <!-- Шапка -->
   <header class="mb-4 mt-2 text-center">
-    <h1 class="text-2xl font-black tracking-tighter italic uppercase text-white leading-none">
-      LEADERBOARD
-    </h1>
-    <p id="status-tag" class="text-[9px] text-blue-400 font-bold uppercase tracking-[0.2em] mt-1 opacity-60">Live Syncing</p>
+    <h1 class="text-2xl font-black tracking-tighter italic uppercase text-white leading-none">LEADERBOARD</h1>
+    <p id="status-tag" class="text-[9px] text-blue-400 font-bold uppercase tracking-[0.2em] mt-1 opacity-60">
+      <span class="live-dot"></span>Live Syncing
+    </p>
   </header>
 
+  <!-- Лидерборд -->
   <div id="leaderboard" class="max-w-md mx-auto">
     <div class="text-center py-20 opacity-30 font-bold uppercase tracking-widest text-[10px] loading-pulse">
       Обновление данных...
     </div>
   </div>
 
-  <!-- Модальное окно -->
-  <div id="modal-overlay" onclick="closeModal()">
+  <!-- Кнопка администратора -->
+  <button id="admin-btn" onclick="openPasswordModal()" title="Администратор">⚙️</button>
+
+  <!-- Тост -->
+  <div id="toast"></div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- ОВЕРЛЕЙ: Модальное окно детализации раунда        -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div id="detail-overlay" class="overlay" onclick="closeDetailModal()">
     <div class="bg-[#1c1c1e] w-full max-w-[340px] rounded-[32px] border border-white/10 overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
       <div class="p-5 border-b border-white/10 flex justify-between items-center bg-white/[0.02]">
         <div>
           <h2 id="modal-team-name" class="text-lg font-black uppercase text-white leading-tight truncate max-w-[200px]">Команда</h2>
           <p id="modal-round-name" class="text-[9px] text-blue-400 font-bold uppercase tracking-widest mt-0.5">Детали раунда</p>
         </div>
-        <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs hover:bg-white/20">✕</button>
+        <button onclick="closeDetailModal()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs hover:bg-white/20">✕</button>
       </div>
       <div id="modal-body" class="p-5 text-sm max-h-[50vh] overflow-y-auto"></div>
       <div class="px-5 py-4 border-t border-white/10 bg-white/[0.04] flex justify-between items-center">
@@ -129,16 +203,309 @@
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- ОВЕРЛЕЙ: Ввод пароля                              -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div id="password-overlay" class="overlay" onclick="closePasswordModal()">
+    <div class="bg-[#1c1c1e] w-full max-w-[300px] rounded-[28px] border border-white/10 overflow-hidden shadow-2xl p-6" onclick="event.stopPropagation()">
+      <div class="text-center mb-5">
+        <div class="text-3xl mb-2">🔐</div>
+        <h2 class="text-base font-black uppercase tracking-tight text-white">Панель администратора</h2>
+        <p class="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">Введите пароль для входа</p>
+      </div>
+      <input
+        id="password-input"
+        class="admin-input mb-3"
+        type="password"
+        placeholder="Пароль"
+        onkeydown="if(event.key==='Enter') submitPassword()"
+      />
+      <p id="password-error" class="text-[10px] text-red-400 font-bold uppercase tracking-widest mb-3 hidden text-center">
+        Неверный пароль
+      </p>
+      <div class="flex gap-2">
+        <button class="panel-btn flex-1" style="background:rgba(255,255,255,0.07);color:#fff;" onclick="closePasswordModal()">Отмена</button>
+        <button class="panel-btn btn-primary flex-1" onclick="submitPassword()" id="password-submit-btn">Войти</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- ОВЕРЛЕЙ: Панель администратора                    -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div id="admin-overlay" class="overlay" onclick="closeAdminPanel()">
+    <div class="bg-[#1c1c1e] w-full max-w-[320px] rounded-[28px] border border-white/10 overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+
+      <!-- Заголовок -->
+      <div class="p-5 border-b border-white/10 flex justify-between items-center bg-white/[0.02]">
+        <div>
+          <h2 class="text-base font-black uppercase tracking-tight text-white">Администратор</h2>
+          <p class="text-[9px] text-blue-400 font-bold uppercase tracking-widest mt-0.5">Панель управления</p>
+        </div>
+        <button onclick="closeAdminPanel()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs hover:bg-white/20">✕</button>
+      </div>
+
+      <div class="p-5 space-y-5">
+
+        <!-- Автообновление: тоггл -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <div>
+              <p class="text-xs font-black uppercase tracking-wide text-white">Автообновление</p>
+              <p id="admin-refresh-status" class="text-[9px] text-white/30 font-bold uppercase tracking-widest mt-0.5">Включено</p>
+            </div>
+            <div id="refresh-toggle" class="toggle-track on" onclick="toggleRefresh()">
+              <div class="toggle-thumb"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Интервал обновления -->
+        <div>
+          <p class="text-xs font-black uppercase tracking-wide text-white mb-2">Интервал обновления</p>
+          <div class="flex items-center gap-3">
+            <input
+              id="interval-input"
+              class="interval-input"
+              type="number"
+              min="5"
+              max="300"
+              value="15"
+            />
+            <span class="text-[10px] text-white/40 font-bold uppercase tracking-widest">секунд</span>
+            <button class="panel-btn btn-primary ml-auto" onclick="saveInterval()" style="padding: 8px 14px;">
+              Сохранить
+            </button>
+          </div>
+          <p class="text-[9px] text-white/20 font-bold mt-1.5">Минимум 5 сек, максимум 300 сек</p>
+        </div>
+
+        <!-- Ручное обновление -->
+        <div>
+          <p class="text-xs font-black uppercase tracking-wide text-white mb-2">Ручное обновление</p>
+          <button class="panel-btn btn-success w-full" onclick="manualRefresh()" id="manual-refresh-btn">
+            🔄 Обновить сейчас
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Выйти -->
+      <div class="px-5 pb-5">
+        <button class="panel-btn btn-danger w-full" onclick="adminLogout()">Выйти из панели</button>
+      </div>
+
+    </div>
+  </div>
+
   <script>
+    // ── Состояние ──────────────────────────────────────
+    var autoRefreshTimer = null;
+    var flagPollTimer    = null;
+    var currentEnabled   = true;
+    var currentInterval  = 15;
+    var adminUnlocked    = false;
+
+    // ── Тост ──────────────────────────────────────────
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    // ── Статус-строка ──────────────────────────────────
+    function setStatus(html, color) {
+      const el = document.getElementById('status-tag');
+      el.innerHTML = html;
+      el.style.color = color || '';
+    }
+
+    // ── Таймер данных ──────────────────────────────────
+    function startAutoRefresh() {
+      stopAutoRefresh();
+      autoRefreshTimer = setInterval(updateData, currentInterval * 1000);
+    }
+    function stopAutoRefresh() {
+      if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+    }
+
+    // ── Обновление данных ──────────────────────────────
     function updateData() {
-      const statusTag = document.getElementById('status-tag');
       google.script.run
         .withSuccessHandler(function(data) {
           renderLeaderboard(data);
-          statusTag.innerText = 'Обновлено: ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+          if (autoRefreshTimer !== null) {
+            setStatus('<span class="live-dot"></span>Обновлено: ' +
+              new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}), '#60a5fa');
+          }
         })
         .getLiveResults();
     }
+
+    // ── Polling флага (каждые 5 сек) ──────────────────
+    function startFlagPolling() {
+      flagPollTimer = setInterval(function() {
+        google.script.run
+          .withSuccessHandler(function(settings) {
+            var changed = false;
+            if (settings.enabled !== currentEnabled) {
+              currentEnabled = settings.enabled;
+              changed = true;
+            }
+            if (settings.interval !== currentInterval) {
+              currentInterval = settings.interval;
+              changed = true;
+            }
+            if (changed) applySettings(false); // false = не сохранять обратно на сервер
+          })
+          .getRefreshSettings();
+      }, 5000);
+    }
+
+    // ── Применить настройки ────────────────────────────
+    function applySettings(save) {
+      if (currentEnabled) {
+        startAutoRefresh();
+        setStatus('<span class="live-dot"></span>Live Syncing', '#60a5fa');
+      } else {
+        stopAutoRefresh();
+        setStatus('<span class="live-dot paused"></span>Автообновление отключено', '#444');
+      }
+      // Обновляем UI панели если она открыта
+      syncAdminUI();
+    }
+
+    function syncAdminUI() {
+      const toggle = document.getElementById('refresh-toggle');
+      const statusLabel = document.getElementById('admin-refresh-status');
+      const intervalInput = document.getElementById('interval-input');
+      if (!toggle) return;
+      if (currentEnabled) {
+        toggle.classList.add('on');
+        statusLabel.textContent = 'Включено';
+        statusLabel.style.color = '#4ade80';
+      } else {
+        toggle.classList.remove('on');
+        statusLabel.textContent = 'Отключено';
+        statusLabel.style.color = '#f87171';
+      }
+      intervalInput.value = currentInterval;
+    }
+
+    // ══════════════════════════════════════════════════
+    // ПАРОЛЬ
+    // ══════════════════════════════════════════════════
+
+    function openPasswordModal() {
+      if (adminUnlocked) { openAdminPanel(); return; }
+      document.getElementById('password-input').value = '';
+      document.getElementById('password-error').classList.add('hidden');
+      document.getElementById('password-overlay').classList.add('active');
+      setTimeout(() => document.getElementById('password-input').focus(), 100);
+    }
+
+    function closePasswordModal() {
+      document.getElementById('password-overlay').classList.remove('active');
+    }
+
+    function submitPassword() {
+      const input = document.getElementById('password-input');
+      const btn   = document.getElementById('password-submit-btn');
+      const pw    = input.value;
+      if (!pw) return;
+
+      btn.textContent = '...';
+      btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function(ok) {
+          btn.textContent = 'Войти';
+          btn.disabled = false;
+          if (ok) {
+            adminUnlocked = true;
+            closePasswordModal();
+            openAdminPanel();
+          } else {
+            input.classList.add('error');
+            document.getElementById('password-error').classList.remove('hidden');
+            setTimeout(() => input.classList.remove('error'), 400);
+            input.value = '';
+            input.focus();
+          }
+        })
+        .checkAdminPassword(pw);
+    }
+
+    // ══════════════════════════════════════════════════
+    // ПАНЕЛЬ АДМИНИСТРАТОРА
+    // ══════════════════════════════════════════════════
+
+    function openAdminPanel() {
+      syncAdminUI();
+      document.getElementById('admin-overlay').classList.add('active');
+    }
+
+    function closeAdminPanel() {
+      document.getElementById('admin-overlay').classList.remove('active');
+    }
+
+    function adminLogout() {
+      adminUnlocked = false;
+      closeAdminPanel();
+      showToast('Выход выполнен');
+    }
+
+    // Тоггл автообновления
+    function toggleRefresh() {
+      currentEnabled = !currentEnabled;
+      syncAdminUI();
+      google.script.run
+        .withSuccessHandler(function() {
+          applySettings(false);
+          showToast(currentEnabled ? '✅ Автообновление включено' : '⏸ Автообновление отключено');
+        })
+        .saveRefreshSettings(currentEnabled, currentInterval);
+    }
+
+    // Сохранить интервал
+    function saveInterval() {
+      const val = parseInt(document.getElementById('interval-input').value, 10);
+      if (isNaN(val) || val < 5 || val > 300) {
+        showToast('⚠️ Введите от 5 до 300');
+        return;
+      }
+      currentInterval = val;
+      google.script.run
+        .withSuccessHandler(function(result) {
+          currentInterval = result.interval;
+          syncAdminUI();
+          if (currentEnabled) startAutoRefresh(); // перезапустить с новым интервалом
+          showToast('✅ Интервал: ' + result.interval + ' сек');
+        })
+        .saveRefreshSettings(currentEnabled, val);
+    }
+
+    // Ручное обновление
+    function manualRefresh() {
+      const btn = document.getElementById('manual-refresh-btn');
+      btn.textContent = '⏳ Обновляю...';
+      btn.disabled = true;
+      google.script.run
+        .withSuccessHandler(function(data) {
+          renderLeaderboard(data);
+          setStatus('<span class="live-dot"></span>Обновлено: ' +
+            new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}), '#60a5fa');
+          btn.textContent = '🔄 Обновить сейчас';
+          btn.disabled = false;
+          showToast('✅ Данные обновлены');
+        })
+        .getLiveResults();
+    }
+
+    // ══════════════════════════════════════════════════
+    // РЕНДЕР ЛИДЕРБОРДА
+    // ══════════════════════════════════════════════════
 
     function renderLeaderboard(data) {
       const container = document.getElementById('leaderboard');
@@ -146,13 +513,11 @@
 
       container.innerHTML = data.map((item, index) => {
         const rank = index + 1;
-        let rankClass = '';
-        let medal = '';
-        
-        if (rank === 1) { rankClass = 'rank-1'; medal = '🥇'; }
+        let rankClass = '', medal = '';
+        if (rank === 1)      { rankClass = 'rank-1'; medal = '🥇'; }
         else if (rank === 2) { rankClass = 'rank-2'; medal = '🥈'; }
         else if (rank === 3) { rankClass = 'rank-3'; medal = '🥉'; }
-        else { medal = `<span class="text-xs opacity-30 font-black">#${rank}</span>`; }
+        else                 { medal = `<span class="text-xs opacity-30 font-black">#${rank}</span>`; }
 
         return `
           <div class="team-card p-3.5 ${rankClass}">
@@ -161,33 +526,37 @@
                 <div class="w-8 flex justify-center items-center medal-icon">${medal}</div>
                 <span class="font-black text-lg uppercase tracking-tight truncate max-w-[160px]">${item.name}</span>
               </div>
-              <div class="text-2xl font-black ${rank <= 3 ? (rank === 1 ? 'text-yellow-400' : 'text-white') : 'text-white/90'}">
-                ${item.score}
-              </div>
+              <div class="text-2xl font-black ${rank===1?'text-yellow-400':'text-white/90'}">${item.score}</div>
             </div>
             <div class="rounds-grid">
               ${item.rounds.map(r => `
-                <div onclick="openDetails('${item.name.replace(/'/g, "\\'")}', '${r.fullName}', '${r.name}', ${r.score})" class="round-badge active:scale-95 transition-transform">
+                <div onclick="openDetails('${item.name.replace(/'/g,"\\'")}','${r.fullName}','${r.name}',${r.score})"
+                     class="round-badge active:scale-95 transition-transform">
                   <span class="text-[8px] text-white/40 font-bold mb-0.5 uppercase">${r.name}</span>
                   <span class="text-sm font-black">${r.score}</span>
                 </div>
               `).join('')}
             </div>
-          </div>
-        `;
+          </div>`;
       }).join('');
     }
+
+    // ══════════════════════════════════════════════════
+    // ДЕТАЛИЗАЦИЯ РАУНДА
+    // ══════════════════════════════════════════════════
 
     function openDetails(teamName, roundFullName, roundShortName, score) {
       document.getElementById('modal-team-name').innerText = teamName;
       document.getElementById('modal-round-name').innerText = roundFullName;
       document.getElementById('modal-total-round').innerText = score;
-      document.getElementById('modal-body').innerHTML = '<div class="py-10 flex justify-center"><div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>';
-      document.body.classList.add('modal-open');
+      document.getElementById('modal-body').innerHTML =
+        '<div class="py-10 flex justify-center"><div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>';
+      document.getElementById('detail-overlay').classList.add('active');
+      google.script.run.withSuccessHandler(renderQuestions).getDetailedRoundData(teamName, roundFullName);
+    }
 
-      google.script.run
-        .withSuccessHandler(renderQuestions)
-        .getDetailedRoundData(teamName, roundFullName);
+    function closeDetailModal() {
+      document.getElementById('detail-overlay').classList.remove('active');
     }
 
     function renderQuestions(questions) {
@@ -196,29 +565,36 @@
         body.innerHTML = '<div class="text-center py-6 opacity-30 uppercase font-bold text-[10px]">Нет данных</div>';
         return;
       }
-
       body.innerHTML = questions.map(q => {
-        const isBonus = q.num && q.num.toString().toLowerCase().includes('доп');
-        const colorClass = q.correct ? 'text-green-400' : (isBonus ? 'text-blue-400' : 'text-white/20');
-        const dotColor = q.correct ? 'bg-green-500' : (isBonus ? 'bg-blue-500' : 'bg-white/10');
-        
+        const isBonus  = q.num && q.num.toString().toLowerCase().includes('доп');
+        const colorCls = q.correct ? 'text-green-400' : (isBonus ? 'text-blue-400' : 'text-white/20');
+        const dotCls   = q.correct ? 'bg-green-500'   : (isBonus ? 'bg-blue-500'   : 'bg-white/10');
         return `
           <div class="answer-item">
             <div class="flex items-center gap-3">
-              <div class="w-1.5 h-1.5 rounded-full ${dotColor}"></div>
+              <div class="w-1.5 h-1.5 rounded-full ${dotCls}"></div>
               <span class="font-bold text-white/80">${q.num}</span>
             </div>
-            <div class="font-black ${colorClass}">${q.points || 0}</div>
-          </div>
-        `;
+            <div class="font-black ${colorCls}">${q.points || 0}</div>
+          </div>`;
       }).join('');
     }
 
-    function closeModal() { document.body.classList.remove('modal-open'); }
+    // ══════════════════════════════════════════════════
+    // ИНИЦИАЛИЗАЦИЯ
+    // ══════════════════════════════════════════════════
 
     window.onload = function() {
       updateData();
-      setInterval(updateData, 15000);
+
+      google.script.run
+        .withSuccessHandler(function(settings) {
+          currentEnabled  = settings.enabled;
+          currentInterval = settings.interval;
+          applySettings(false);
+          startFlagPolling();
+        })
+        .getRefreshSettings();
     };
   </script>
 </body>
