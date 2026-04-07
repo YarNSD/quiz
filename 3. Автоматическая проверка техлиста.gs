@@ -23,26 +23,6 @@ function setupAutoUpdate() {
   SpreadsheetApp.getUi().alert("✅ Автообновление Техлиста включено. Сводная таблица теперь обновляется только вручную.");
 }
 
-/**
- * Стандартная функция Google Apps Script, срабатывает при редактировании ячеек.
- */
-function onEdit(e) {
-  if (!e) return;
-  const range = e.range;
-  const sheetName = range.getSheet().getName();
-  
-  // Автоматическое обновление Дашборда и Сводной при правке ячеек ОТКЛЮЧЕНО.
-  // Оставлено только условие для отладки или ручного вызова при необходимости.
-  
-  /* if (sheetName.startsWith("Раунд ")) {
-    // createResultsDashboard(); // Отключено
-  }
-  
-  if (sheetName === "Список команд" && range.getColumn() === 2 && range.getRow() >= 2) {
-    // refreshAllData(); // Отключено
-  }
-  */
-}
 
 /**
  * Обработчик изменений структуры (добавление/удаление/переименование листов)
